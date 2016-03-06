@@ -13,6 +13,14 @@ NUM_OF_INTS = 10
 X_local EQU BYTE PTR [ebp-4]
 Y_local EQU BYTE PTR [ebp-8]
 
+myWriteString MACRO	string
+		push	edx
+		mov		edx, OFFSET string
+		call	WriteString
+		call	Crlf
+		pop		edx
+ENDM
+
 getString MACRO bytes1, userNum, prompt1
 		mov		edx, prompt1
 		call	WriteString
@@ -60,8 +68,7 @@ endString				BYTE			"Made it to the end of main." , 0dh, 0ah, 0
 .code
 main PROC
 
-		push	OFFSET	introString
-		call	intro
+		myWriteString	introString
 
 		mov		ecx, NUM_OF_INTS
 	fillArrayLoop:
@@ -92,28 +99,14 @@ main PROC
 
 		push	OFFSET	avgString
 		push	sumValue
+
 		push	OFFSET	avgValue
 		call	computeAvg
 
-		mov		edx, OFFSET endString
-		call	WriteString
+		myWriteString endString
 
 		exit	; exit to operating system
 main ENDP
-
-intro PROC
-		push	ebp
-		mov		ebp, esp
-		push	edx
-
-		mov		edx, [ebp+8]
-		call	WriteString
-		call	Crlf
-
-		pop		edx
-		pop		ebp
-		ret		4	
-intro ENDP
 
 readVal PROC
 		push	ebp
@@ -163,10 +156,12 @@ readVal PROC
 		stosb								; store al into [edi]
 		loop	convertString
 		jmp		endErrorInt
+
 	errorNotInt:
 		mov		edx, [ebp+24]				; OFFSET of errorString
 		call	WriteString
 		jmp		getValueMac					; get new value
+
 	endErrorInt:
 		mov		ecx, [ebp+20]
 		mov		[ecx], ebx	
@@ -267,11 +262,11 @@ computeAvg PROC
 		mov		edx, [ebp+16]				; OFFSET of avgString
 		call	WriteString
 
-		push	eax
-		call	WriteVal
-
-		;call	WriteDec
-		;call	Crlf
+		mov		ebx, [ebp+8]
+		mov		[ebx], eax					; save average in avgValue
+		
+		;push	eax
+		;call	WriteVal
 
 		popad
 		mov		esp, ebp
@@ -288,12 +283,11 @@ writeVal PROC
 		mov		eax,[ebp+8]				; number to convert
 		mov		edi, OFFSET inputString
 		mov		ebx, 10
-		;mov		eax, 12345678
 		mov		X_local, 0				; string length 
 		cld
 		
 	convertToInt:
-		inc		X_local
+		inc		X_local						
 		xor		edx, edx					; zero remainder value
 		mov		ebx, 10
 		div		ebx							; Divide eax by 10
@@ -303,7 +297,7 @@ writeVal PROC
 
 		xor		eax, eax
 		mov		al, dl
-		;call	WriteChar
+
 		stosb	
 
 		mov		eax, ebx
@@ -312,10 +306,9 @@ writeVal PROC
 
 		mov		eax, 0
 		mov		al, X_local
-		;call	WriteDec
-		;call	Crlf
 
-		;reverse the string
+
+	;reverse the string
 		mov		ecx, eax
 		mov		esi, OFFSET inputString
 		add		esi, ecx
