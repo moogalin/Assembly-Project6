@@ -33,9 +33,9 @@ getString MACRO bytes1, userNum, prompt1
 ENDM
 
 displayString MACRO string
-		mov		edx, string
+		xor		edx, edx	
+		lea		edx, string
 		call	WriteString
-		call	Crlf
 
 ENDM
 
@@ -51,10 +51,9 @@ introString				BYTE			"PROGRAMMING ASSIGNMENT 6: Designing low-level I/O procedu
 getStringPrompt			BYTE			"Please enter an unsigned number: ", 0
 errorString				BYTE			"ERROR: You did not enter an unsigned number or your number was too big.", 0dh, 0ah, 0
 userNumberString		BYTE			MAXSIZE DUP(?)	
-inputString				BYTE			100 DUP(0)
-outputString			BYTE			100 DUP(0)
-sumString				BYTE			"  The sum of these numbers so far is: ", 0	
-avgString				BYTE			"  The average is: ", 0
+sumString				BYTE			"  The sum: ", 0	
+avgString				BYTE			"  The average of all numbers: ", 0
+numsString				BYTE			"You entered the following numbers: ", 0dh, 0ah, 0
 byteCount				DWORD			?
 userNumberInteger		DWORD			?	
 numberArray				DWORD			NUM_OF_INTS DUP(?)
@@ -94,6 +93,7 @@ main PROC
 
 		loop	fillArrayLoop
 
+		push	OFFSET numsString
 		push	OFFSET numberArray
 		call	displayArray
 
@@ -178,13 +178,15 @@ fillArray PROC
 		mov		ebp, esp
 		pushad
 
+		xor		eax, eax
 		mov		edi, [ebp+8]				; OFFSET of integer array
 		mov		ecx, [ebp+12]				; array element #
 		mov		eax, [ebp+16]				; integer to be added to array 			
 		
 		mov		[edi+ecx], eax	
-		;call	WriteDec
-		;call	Crlf
+		push	eax
+		call	WriteVal
+		call	Crlf
 
 		popad
 		mov		esp, ebp
@@ -200,10 +202,15 @@ displayArray PROC
 
 		mov		esi, [ebp+8]				; OFFSET of integer array
 		mov		ecx, NUM_OF_INTS 
+		mov		edx, [ebp+12]				; OFFSET of nums String
+		call	WriteString
 
 	loopDisplay:
+		xor		eax, eax
 		mov		eax, [esi]
-		call	WriteDec
+		push	[esi]
+		call	WriteVal
+		;call	WriteDec
 		mov		al, ' '
 		call	WriteChar
 		add		esi, 4
@@ -213,7 +220,7 @@ displayArray PROC
 		popad
 		mov		esp, ebp
 		pop		ebp
-		ret		4
+		ret		8
 displayArray ENDP
 
 
@@ -239,7 +246,9 @@ computeSum PROC
 		mov		eax, ebx
 		mov		ebx, [ebp+8]				; OFFSET of sumValue
 		mov		[ebx], eax					; save sum in sumValue 
-		call	WriteDec
+		
+		push	eax
+		call	WriteVal
 		call	Crlf
 
 		popad
@@ -265,8 +274,9 @@ computeAvg PROC
 		mov		ebx, [ebp+8]
 		mov		[ebx], eax					; save average in avgValue
 		
-		;push	eax
-		;call	WriteVal
+		push	eax
+		call	WriteVal
+		call	Crlf
 
 		popad
 		mov		esp, ebp
@@ -275,13 +285,12 @@ computeAvg PROC
 computeAvg ENDP
 
 writeVal PROC
-		push	ebp
-		mov		ebp, esp
-		sub		esp, 12
+		LOCAL inputArray[100]:DWORD
+		LOCAL outputArray[99]:DWORD
 		pushad
 
 		mov		eax,[ebp+8]				; number to convert
-		mov		edi, OFFSET inputString
+		lea		edi, inputArray
 		mov		ebx, 10
 		mov		X_local, 0				; string length 
 		cld
@@ -303,17 +312,17 @@ writeVal PROC
 		mov		eax, ebx
 		cmp		eax, 0						; Divide until (eax / 10) is less than 0
 		jne		convertToInt
-
+ 
 		mov		eax, 0
 		mov		al, X_local
 
 
 	;reverse the string
 		mov		ecx, eax
-		mov		esi, OFFSET inputString
+		lea		esi, inputArray
 		add		esi, ecx
 		dec		esi
-		mov		edi, OFFSET outputString
+		lea		edi, outputArray
 	reverseString:
 		std
 		lodsb
@@ -321,12 +330,10 @@ writeVal PROC
 		stosb
 		loop	reverseString
 
-	displayString OFFSET outputString
+	displayString outputArray
 
 		popad
-		mov		esp, ebp
-		pop		ebp
-		ret		4
+		ret			4
 writeVal ENDP
 
 
